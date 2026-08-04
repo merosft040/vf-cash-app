@@ -15,7 +15,7 @@ except Exception as e:
     st.error("⚠️ يرجى ضبط مفاتيح Supabase في Secrets أولاً!")
     st.stop()
 
-# 3. فحص التفعيل السابق من قاعدة البيانات
+# 3. فحص التفعيل السابق
 if "is_activated" not in st.session_state:
     st.session_state.is_activated = False
 
@@ -27,18 +27,21 @@ if not st.session_state.is_activated:
     if st.button("تفعيل", use_container_width=True):
         if user_key:
             clean_key = user_key.strip()
-            # الاستعلام من قاعدة البيانات عن الكود
-            response = supabase.table("activations").select("*").eq("key_code", clean_key).execute()
-            data = response.data
-            
-            if data:
-                # تحديث حالة الكود إلى مفعل دائمياً في قاعدة البيانات
-                supabase.table("activations").update({"is_activated": True}).eq("key_code", clean_key).execute()
-                st.session_state.is_activated = True
-                st.success("تم التفعيل بنجاح! 🚀")
-                st.rerun()
-            else:
-                st.error("❌ كود التفعيل غير صحيح أو غير موجود بالقاعدة!")
+            try:
+                # الاستعلام من قاعدة البيانات فقط عند الضغط على زر تفعيل
+                response = supabase.table("activations").select("*").eq("key_code", clean_key).execute()
+                data = response.data
+                
+                if data:
+                    # تحديث حالة الكود إلى مفعل
+                    supabase.table("activations").update({"is_activated": True}).eq("key_code", clean_key).execute()
+                    st.session_state.is_activated = True
+                    st.success("تم التفعيل بنجاح! 🚀")
+                    st.rerun()
+                else:
+                    st.error("❌ كود التفعيل غير صحيح أو غير موجود بالقاعدة!")
+            except Exception as db_err:
+                st.error(f"❌ خطأ في قاعدة البيانات: {db_err}")
         else:
             st.warning("يرجى كتابة الكود!")
     st.stop()
