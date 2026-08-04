@@ -15,12 +15,12 @@ except Exception as e:
     st.error("⚠️ يرجى ضبط مفاتيح Supabase في Secrets أولاً!")
     st.stop()
 
-# 3. التحقق من حالة التفعيل في جلسة المتصفح
-if "is_activated" not in st.session_state:
-    st.session_state.is_activated = False
+# 3. التحقق من التفعيل عبر الرابط (Query Params) لضمان عدم طلبه بعد الإغلاق
+query_params = st.query_params
+is_activated = query_params.get("activated") == "true"
 
 # 4. شاشة التفعيل
-if not st.session_state.is_activated:
+if not is_activated:
     st.title("🔑 تفعيل التطبيق (نسخة سحابية)")
     user_key = st.text_input("أدخل كود الاشتراك للاختبار:", type="password")
     
@@ -32,7 +32,8 @@ if not st.session_state.is_activated:
                 data = response.data
                 
                 if data:
-                    st.session_state.is_activated = True
+                    # حفظ حالة التفعيل في الرابط لتجنب طلبه لاحقاً
+                    st.query_params["activated"] = "true"
                     st.success("تم التفعيل بنجاح! 🚀")
                     st.rerun()
                 else:
@@ -51,7 +52,7 @@ with st.sidebar:
     st.write("⚙️ الإعدادات")
     st.success("🟢 التطبيق مفعل ودائم")
     if st.button("إلغاء التفعيل / تسجيل الخروج"):
-        st.session_state.is_activated = False
+        st.query_params.clear()
         st.rerun()
 
 st.title("🚀 فودافون كاش 2026")
