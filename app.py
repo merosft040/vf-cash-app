@@ -1,13 +1,9 @@
 import streamlit as st
 import requests
 import json
-import extra_streamlit_components as stx
 
 # 1. ضبط إعدادات الصفحة
 st.set_page_config(page_title="فودافون كاش 2026", page_icon="🚀", layout="centered")
-
-# مدير الكوكيز لحفظ التفعيل في المتصفح (تم تصحيح الاستدعاء)
-cookie_manager = stx.CookieManager()
 
 # 2. قائمة 20 كود تفعيل نشط
 VALID_KEYS = {
@@ -18,24 +14,25 @@ VALID_KEYS = {
     "AHMED-17": "نشط", "AHMED-18": "نشط", "AHMED-19": "نشط", "AHMED-20": "نشط"
 }
 
-# فحص إذا كان التطبيق مفعلاً مسبقاً في المتصفح
-auth_cookie = cookie_manager.get(cookie="is_activated")
+# فحص التفعيل المسبق من الـ Session أو رابط المتصفح
+query_params = st.query_params
+saved_key = query_params.get("key", None)
 
-if auth_cookie == "true":
-    st.session_state.is_activated = True
-elif "is_activated" not in st.session_state:
-    st.session_state.is_activated = False
+if "is_activated" not in st.session_state:
+    if saved_key in VALID_KEYS and VALID_KEYS[saved_key] == "نشط":
+        st.session_state.is_activated = True
+    else:
+        st.session_state.is_activated = False
 
-# 3. شاشة التفعيل (تظهر فقط إذا لم يكن التفعيل محفوظاً)
+# 3. شاشة التفعيل
 if not st.session_state.is_activated:
     st.title("🔑 تفعيل التطبيق (نسخة تجريبية)")
     user_key = st.text_input("أدخل كود الاشتراك للاختبار:", type="password")
     
-    if st.button("تفعيل"):
+    if st.button("تفعيل", use_container_width=True):
         if user_key in VALID_KEYS and VALID_KEYS[user_key] == "نشط":
             st.session_state.is_activated = True
-            # حفظ التفعيل داخل المتصفح
-            cookie_manager.set("is_activated", "true", key="set_auth")
+            st.query_params["key"] = user_key  # حفظ التفعيل في المتصفح/الرابط
             st.success("تم التفعيل بنجاح! 🚀")
             st.rerun()
         else:
@@ -51,8 +48,8 @@ if not st.session_state.is_activated:
 with st.sidebar:
     st.write("⚙️ الإعدادات")
     if st.button("🔒 إلغاء التفعيل (تسجيل خروج)"):
-        cookie_manager.delete("is_activated")
         st.session_state.is_activated = False
+        st.query_params.clear()
         st.rerun()
 
 st.title("🚀 فودافون كاش 2026")
