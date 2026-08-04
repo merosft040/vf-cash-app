@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import requests
 import json
 
@@ -14,17 +15,11 @@ VALID_KEYS = {
     "AHMED-17": "نشط", "AHMED-18": "نشط", "AHMED-19": "نشط", "AHMED-20": "نشط"
 }
 
-# فحص التفعيل المسبق من الـ Session أو رابط المتصفح
-query_params = st.query_params
-saved_key = query_params.get("key", None)
-
+# 3. تهيئة حالة التفعيل
 if "is_activated" not in st.session_state:
-    if saved_key in VALID_KEYS and VALID_KEYS[saved_key] == "نشط":
-        st.session_state.is_activated = True
-    else:
-        st.session_state.is_activated = False
+    st.session_state.is_activated = False
 
-# 3. شاشة التفعيل
+# 4. شاشة التفعيل
 if not st.session_state.is_activated:
     st.title("🔑 تفعيل التطبيق (نسخة تجريبية)")
     user_key = st.text_input("أدخل كود الاشتراك للاختبار:", type="password")
@@ -32,7 +27,6 @@ if not st.session_state.is_activated:
     if st.button("تفعيل", use_container_width=True):
         if user_key in VALID_KEYS and VALID_KEYS[user_key] == "نشط":
             st.session_state.is_activated = True
-            st.query_params["key"] = user_key  # حفظ التفعيل في المتصفح/الرابط
             st.success("تم التفعيل بنجاح! 🚀")
             st.rerun()
         else:
@@ -41,15 +35,14 @@ if not st.session_state.is_activated:
     st.stop()
 
 # =========================================================
-# 4. الواجهة الرئيسية للتطبيق (تظهر وتظل مفتوحة دائماً)
+# 5. الواجهة الرئيسية للتطبيق (تظهر بعد التفعيل)
 # =========================================================
 
-# خيار لإلغاء التفعيل وتسجيل الخروج في الشريط الجانبي
+# زر إلغاء التفعيل في الشريط الجانبي
 with st.sidebar:
     st.write("⚙️ الإعدادات")
     if st.button("🔒 إلغاء التفعيل (تسجيل خروج)"):
         st.session_state.is_activated = False
-        st.query_params.clear()
         st.rerun()
 
 st.title("🚀 فودافون كاش 2026")
