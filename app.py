@@ -2,13 +2,9 @@ import streamlit as st
 import requests
 import json
 from supabase import create_client, Client
-from streamlit_cookies_controller import CookieController
 
 # 1. ضبط إعدادات الصفحة
 st.set_page_config(page_title="فودافون كاش 2026", page_icon="🚀", layout="centered")
-
-# تشغيل وحدة التحكم في الكوكيز
-controller = CookieController()
 
 # 2. الاتصال بقاعدة بيانات Supabase
 try:
@@ -19,11 +15,22 @@ except Exception as e:
     st.error("⚠️ يرجى ضبط مفاتيح Supabase في Secrets أولاً!")
     st.stop()
 
-# 3. التحقق من حالة التفعيل المحفوظة في كوكيز المتصفح الدائمة
-auth_cookie = controller.get("vf_cash_auth")
-is_activated = (auth_cookie == "true")
+# 3. التحقق من الكود الموجود في الرابط مباشرة
+query_params = st.query_params
+saved_key = query_params.get("key", "")
 
-# 4. شاشة التفعيل (تظهر فقط لو مفيش كوكي تفعيل مسجل)
+is_activated = False
+
+if saved_key:
+    try:
+        # التحقق السريع من الكود في قاعدة البيانات
+        response = supabase.table("activations").select("*").eq("key_code", saved_key.strip()).execute()
+        if response.data:
+            is_activated = True
+    except:
+        pass
+
+# 4. شاشة التفعيل (لو مفيش كود صالح في الرابط)
 if not is_activated:
     st.title("🔑 تفعيل التطبيق (نسخة سحابية)")
     user_key = st.text_input("أدخل كود الاشتراك للاختبار:", type="password")
@@ -36,9 +43,9 @@ if not is_activated:
                 data = response.data
                 
                 if data:
-                    # حفظ التفعيل في كوكيز المتصفح لمدة سنة كاملة بحيث لا يطلب الكود مجدداً
-                    controller.set("vf_cash_auth", "true", max_age=31536000)
-                    st.success("تم التفعيل بنجاح! 🚀")
+                    # حفظ الكود في الرابط أوتوماتيكياً ولللأبد
+                    st.query_params["key"] = clean_key
+                    st.success("تم التفعيل بنجاح! جاري فتح التطبيق...")
                     st.rerun()
                 else:
                     st.error("❌ كود التفعيل غير صحيح أو غير موجود بالقاعدة!")
@@ -49,14 +56,14 @@ if not is_activated:
     st.stop()
 
 # =========================================================
-# 5. الواجهة الرئيسية للتطبيق (تظهر مباشرة ولا تطلب الكود مجدداً)
+# 5. الواجهة الرئيسية للتطبيق
 # =========================================================
 
 with st.sidebar:
     st.write("⚙️ الإعدادات")
     st.success("🟢 التطبيق مفعل ودائم")
-    if st.button("إلغاء التفعيل / تسجيل الخروج"):
-        controller.remove("vf_cash_auth")
+    if st.button("تسجيل الخروج / مسح التفعيل"):
+        st.query_params.clear()
         st.rerun()
 
 st.title("🚀 فودافون كاش 2026")
