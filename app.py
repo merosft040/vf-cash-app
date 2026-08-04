@@ -1,49 +1,55 @@
 import streamlit as st
-import streamlit.components.v1 as components
 import requests
 import json
+from supabase import create_client, Client
 
 # 1. ضبط إعدادات الصفحة
 st.set_page_config(page_title="فودافون كاش 2026", page_icon="🚀", layout="centered")
 
-# 2. قائمة 20 كود تفعيل نشط
-VALID_KEYS = {
-    "AHMED-01": "نشط", "AHMED-02": "نشط", "AHMED-03": "نشط", "AHMED-04": "نشط",
-    "AHMED-05": "نشط", "AHMED-06": "نشط", "AHMED-07": "نشط", "AHMED-08": "نشط",
-    "AHMED-09": "نشط", "AHMED-10": "نشط", "AHMED-11": "نشط", "AHMED-12": "نشط",
-    "AHMED-13": "نشط", "AHMED-14": "نشط", "AHMED-15": "نشط", "AHMED-16": "نشط",
-    "AHMED-17": "نشط", "AHMED-18": "نشط", "AHMED-19": "نشط", "AHMED-20": "نشط"
-}
+# 2. الاتصال بقاعدة بيانات Supabase
+try:
+    SUPABASE_URL = st.secrets["SUPABASE_URL"]
+    SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
+    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+except Exception as e:
+    st.error("⚠️ يرجى ضبط مفاتيح Supabase في Secrets أولاً!")
+    st.stop()
 
-# 3. تهيئة حالة التفعيل
+# 3. فحص التفعيل السابق من قاعدة البيانات
 if "is_activated" not in st.session_state:
     st.session_state.is_activated = False
 
 # 4. شاشة التفعيل
 if not st.session_state.is_activated:
-    st.title("🔑 تفعيل التطبيق (نسخة تجريبية)")
+    st.title("🔑 تفعيل التطبيق (نسخة سحابية)")
     user_key = st.text_input("أدخل كود الاشتراك للاختبار:", type="password")
     
     if st.button("تفعيل", use_container_width=True):
-        if user_key in VALID_KEYS and VALID_KEYS[user_key] == "نشط":
-            st.session_state.is_activated = True
-            st.success("تم التفعيل بنجاح! 🚀")
-            st.rerun()
+        if user_key:
+            clean_key = user_key.strip()
+            # الاستعلام من قاعدة البيانات عن الكود
+            response = supabase.table("activations").select("*").eq("key_code", clean_key).execute()
+            data = response.data
+            
+            if data:
+                # تحديث حالة الكود إلى مفعل دائمياً في قاعدة البيانات
+                supabase.table("activations").update({"is_activated": True}).eq("key_code", clean_key).execute()
+                st.session_state.is_activated = True
+                st.success("تم التفعيل بنجاح! 🚀")
+                st.rerun()
+            else:
+                st.error("❌ كود التفعيل غير صحيح أو غير موجود بالقاعدة!")
         else:
-            st.error("كود التفعيل غير صحيح أو منتهي الصلاحية!")
-    
+            st.warning("يرجى كتابة الكود!")
     st.stop()
 
 # =========================================================
 # 5. الواجهة الرئيسية للتطبيق (تظهر بعد التفعيل)
 # =========================================================
 
-# زر إلغاء التفعيل في الشريط الجانبي
 with st.sidebar:
     st.write("⚙️ الإعدادات")
-    if st.button("🔒 إلغاء التفعيل (تسجيل خروج)"):
-        st.session_state.is_activated = False
-        st.rerun()
+    st.success("🟢 التطبيق مفعل ودائم")
 
 st.title("🚀 فودافون كاش 2026")
 st.subheader("شحن كروت الفكة والمارد")
