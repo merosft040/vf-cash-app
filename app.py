@@ -6,8 +6,8 @@ import extra_streamlit_components as stx
 # 1. ضبط إعدادات الصفحة
 st.set_page_config(page_title="فودافون كاش 2026", page_icon="🚀", layout="centered")
 
-# مدير الكوكيز لحفظ التفعيل في المتصفح
-cookie_manager = stx.get_cookie_manager()
+# مدير الكوكيز لحفظ التفعيل في المتصفح (تم تصحيح الاستدعاء)
+cookie_manager = stx.CookieManager()
 
 # 2. قائمة 20 كود تفعيل نشط
 VALID_KEYS = {
