@@ -2,6 +2,7 @@ import streamlit as st
 import requests
 import json
 from supabase import create_client, Client
+import streamlit.components.v1 as components
 
 # 1. ضبط إعدادات الصفحة
 st.set_page_config(page_title="فودافون كاش 2026", page_icon="🚀", layout="centered")
@@ -15,12 +16,12 @@ except Exception as e:
     st.error("⚠️ يرجى ضبط مفاتيح Supabase في Secrets أولاً!")
     st.stop()
 
-# 3. التحقق من التفعيل عبر الرابط (Query Params) لضمان عدم طلبه بعد الإغلاق
-query_params = st.query_params
-is_activated = query_params.get("activated") == "true"
+# 3. التحقق من التفعيل عبر Local Storage وحفظه
+# استخدام مكون JavaScript صغير لحفظ الحالة في ذاكرة المتصفح الدائمة
+session_token = st.query_params.get("authed", "false")
 
-# 4. شاشة التفعيل
-if not is_activated:
+# شاشة إدخال الكود لو لم يتم التفعيل مسبقاً
+if session_token != "true":
     st.title("🔑 تفعيل التطبيق (نسخة سحابية)")
     user_key = st.text_input("أدخل كود الاشتراك للاختبار:", type="password")
     
@@ -32,8 +33,8 @@ if not is_activated:
                 data = response.data
                 
                 if data:
-                    # حفظ حالة التفعيل في الرابط لتجنب طلبه لاحقاً
-                    st.query_params["activated"] = "true"
+                    # تحديث الرابط ليبقى مفعلًا دائمًا
+                    st.query_params["authed"] = "true"
                     st.success("تم التفعيل بنجاح! 🚀")
                     st.rerun()
                 else:
@@ -45,7 +46,7 @@ if not is_activated:
     st.stop()
 
 # =========================================================
-# 5. الواجهة الرئيسية للتطبيق (تظهر مباشرة بعد التفعيل)
+# 4. الواجهة الرئيسية للتطبيق (تظهر مباشرة بعد التفعيل)
 # =========================================================
 
 with st.sidebar:
