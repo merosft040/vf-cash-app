@@ -1,9 +1,13 @@
 import streamlit as st
 import requests
 import json
+import extra_streamlit_components as stx
 
-# 1. ضبط إعدادات الصفحة (يجب أن تكون في البداية تماماً)
+# 1. ضبط إعدادات الصفحة
 st.set_page_config(page_title="فودافون كاش 2026", page_icon="🚀", layout="centered")
+
+# مدير الكوكيز لحفظ التفعيل في المتصفح
+cookie_manager = stx.get_cookie_manager()
 
 # 2. قائمة 20 كود تفعيل نشط
 VALID_KEYS = {
@@ -14,11 +18,15 @@ VALID_KEYS = {
     "AHMED-17": "نشط", "AHMED-18": "نشط", "AHMED-19": "نشط", "AHMED-20": "نشط"
 }
 
-# 3. تهيئة حالة التفعيل في الجلسة
-if "is_activated" not in st.session_state:
+# فحص إذا كان التطبيق مفعلاً مسبقاً في المتصفح
+auth_cookie = cookie_manager.get(cookie="is_activated")
+
+if auth_cookie == "true":
+    st.session_state.is_activated = True
+elif "is_activated" not in st.session_state:
     st.session_state.is_activated = False
 
-# 4. شاشة التفعيل (تظهر أولاً)
+# 3. شاشة التفعيل (تظهر فقط إذا لم يكن التفعيل محفوظاً)
 if not st.session_state.is_activated:
     st.title("🔑 تفعيل التطبيق (نسخة تجريبية)")
     user_key = st.text_input("أدخل كود الاشتراك للاختبار:", type="password")
@@ -26,17 +34,26 @@ if not st.session_state.is_activated:
     if st.button("تفعيل"):
         if user_key in VALID_KEYS and VALID_KEYS[user_key] == "نشط":
             st.session_state.is_activated = True
+            # حفظ التفعيل داخل المتصفح
+            cookie_manager.set("is_activated", "true", key="set_auth")
             st.success("تم التفعيل بنجاح! 🚀")
-            st.rerun()  # إعادة تحميل الصفحة لإظهار الواجهة الرئيسية
+            st.rerun()
         else:
             st.error("كود التفعيل غير صحيح أو منتهي الصلاحية!")
     
-    # إيقاف تنفيذ بقية الكود حتى يتم التفعيل
     st.stop()
 
 # =========================================================
-# 5. الواجهة الرئيسية للتطبيق (تظهر فقط بعد التفعيل)
+# 4. الواجهة الرئيسية للتطبيق (تظهر وتظل مفتوحة دائماً)
 # =========================================================
+
+# خيار لإلغاء التفعيل وتسجيل الخروج في الشريط الجانبي
+with st.sidebar:
+    st.write("⚙️ الإعدادات")
+    if st.button("🔒 إلغاء التفعيل (تسجيل خروج)"):
+        cookie_manager.delete("is_activated")
+        st.session_state.is_activated = False
+        st.rerun()
 
 st.title("🚀 فودافون كاش 2026")
 st.subheader("شحن كروت الفكة والمارد")
