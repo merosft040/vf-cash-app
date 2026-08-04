@@ -2,10 +2,13 @@ import streamlit as st
 import requests
 import json
 from supabase import create_client, Client
-import streamlit.components.v1 as components
+from streamlit_cookies_controller import CookieController
 
 # 1. ضبط إعدادات الصفحة
 st.set_page_config(page_title="فودافون كاش 2026", page_icon="🚀", layout="centered")
+
+# تشغيل وحدة التحكم في الكوكيز
+controller = CookieController()
 
 # 2. الاتصال بقاعدة بيانات Supabase
 try:
@@ -16,12 +19,12 @@ except Exception as e:
     st.error("⚠️ يرجى ضبط مفاتيح Supabase في Secrets أولاً!")
     st.stop()
 
-# 3. التحقق من التفعيل عبر Local Storage وحفظه
-# استخدام مكون JavaScript صغير لحفظ الحالة في ذاكرة المتصفح الدائمة
-session_token = st.query_params.get("authed", "false")
+# 3. التحقق من حالة التفعيل المحفوظة في كوكيز المتصفح الدائمة
+auth_cookie = controller.get("vf_cash_auth")
+is_activated = (auth_cookie == "true")
 
-# شاشة إدخال الكود لو لم يتم التفعيل مسبقاً
-if session_token != "true":
+# 4. شاشة التفعيل (تظهر فقط لو مفيش كوكي تفعيل مسجل)
+if not is_activated:
     st.title("🔑 تفعيل التطبيق (نسخة سحابية)")
     user_key = st.text_input("أدخل كود الاشتراك للاختبار:", type="password")
     
@@ -33,8 +36,8 @@ if session_token != "true":
                 data = response.data
                 
                 if data:
-                    # تحديث الرابط ليبقى مفعلًا دائمًا
-                    st.query_params["authed"] = "true"
+                    # حفظ التفعيل في كوكيز المتصفح لمدة سنة كاملة بحيث لا يطلب الكود مجدداً
+                    controller.set("vf_cash_auth", "true", max_age=31536000)
                     st.success("تم التفعيل بنجاح! 🚀")
                     st.rerun()
                 else:
@@ -46,14 +49,14 @@ if session_token != "true":
     st.stop()
 
 # =========================================================
-# 4. الواجهة الرئيسية للتطبيق (تظهر مباشرة بعد التفعيل)
+# 5. الواجهة الرئيسية للتطبيق (تظهر مباشرة ولا تطلب الكود مجدداً)
 # =========================================================
 
 with st.sidebar:
     st.write("⚙️ الإعدادات")
     st.success("🟢 التطبيق مفعل ودائم")
     if st.button("إلغاء التفعيل / تسجيل الخروج"):
-        st.query_params.clear()
+        controller.remove("vf_cash_auth")
         st.rerun()
 
 st.title("🚀 فودافون كاش 2026")
@@ -115,7 +118,7 @@ if st.button("تأكيد الشحن 🚀", use_container_width=True):
                 url_token = "https://mobile.vodafone.com.eg/auth/realms/vf-realm/protocol/openid-connect/token"
                 auth_headers = common_headers.copy()
                 auth_headers.update({'silentLogin': "true", 'seamlessToken': seamless_token, 'firstTimeLogin': "true"})
-                res2 = requests.post(url_token, data={'grant_type': "password", 'client_secret': "b86e30a8-ae29-467a-a71f-65c73f2ff5e3", 'client_id': "cash-app"}, headers=auth_headers, timeout=15)
+                res2 = requests.post(url_token, data={'grant_type': "password", 'client_secret": "b86e30a8-ae29-467a-a71f-65c73f2ff5e3", 'client_id": "cash-app"}, headers=auth_headers, timeout=15)
                 access_token = res2.json().get('access_token')
 
                 url_order = "https://mobile.vodafone.com.eg/services/dxl/pom/productOrder"
