@@ -118,7 +118,7 @@ if st.button("تأكيد الشحن 🚀", use_container_width=True):
                 url_token = "https://mobile.vodafone.com.eg/auth/realms/vf-realm/protocol/openid-connect/token"
                 auth_headers = common_headers.copy()
                 auth_headers.update({'silentLogin': "true", 'seamlessToken': seamless_token, 'firstTimeLogin': "true"})
-                res2 = requests.post(url_token, data={'grant_type': "password", 'client_secret": "b86e30a8-ae29-467a-a71f-65c73f2ff5e3", 'client_id": "cash-app"}, headers=auth_headers, timeout=15)
+                res2 = requests.post(url_token, data={'grant_type': "password", 'client_secret': "b86e30a8-ae29-467a-a71f-65c73f2ff5e3", 'client_id': "cash-app"}, headers=auth_headers, timeout=15)
                 access_token = res2.json().get('access_token')
 
                 url_order = "https://mobile.vodafone.com.eg/services/dxl/pom/productOrder"
