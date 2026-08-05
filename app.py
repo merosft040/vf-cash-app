@@ -94,8 +94,8 @@ selected_product_name = st.selectbox(
 
 st.write("---")
 
-receiver = st.text_input("📱 رقم مستلم الشحن (11 رقم):", max_chars=11)
-pin = st.text_input("🔒 الرقم السري للمحفظة:", type="password", max_chars=6)
+receiver = st.text_input("📱 رقم مستلم الشحن (11 رقم)", max_chars=11)
+pin = st.text_input("🔒 الرقم السري للمحفظة", type="password", max_chars=6)
 
 if st.button("تأكيد الشحن 🚀", use_container_width=True):
     if not (receiver.startswith("01") and len(receiver) == 11):
@@ -146,10 +146,13 @@ if st.button("تأكيد الشحن 🚀", use_container_width=True):
 
                 res3 = requests.post(url_order, data=json.dumps(payload_order), headers=order_headers, timeout=20)
                 
+                # فحص الرد بدقة وكشف كود الحالة
+                st.warning(f"🔍 كود الاستجابة من السيرفر: {res3.status_code}")
+                
                 if res3.status_code != 200:
-                    st.error(f"❌ خطأ من السيرفر (كود الحالة {res3.status_code}): {res3.text}")
+                    st.error(f"❌ مرفوض من السيرفر. الرد: {res3.text}")
                 elif not res3.text.strip():
-                    st.error("❌ السيرفر أرجع ردًا فارغًا تماماً.")
+                    st.error("❌ السيرفر أرجع ردًا فارغًا تماماً (غالباً حظر IP من فودافون).")
                 else:
                     try:
                         result = res3.json()
@@ -159,7 +162,7 @@ if st.button("تأكيد الشحن 🚀", use_container_width=True):
                             msg = result.get('message') or result.get('description') or "فشل الشحن"
                             st.error(f"❌ {msg}")
                     except json.JSONDecodeError:
-                        st.error(f"❌ تعذر قراءة الرد كـ JSON. النص الوارد: {res3.text[:200]}")
+                        st.error(f"❌ تعذر قراءة الرد كـ JSON: {res3.text[:200]}")
 
             except Exception as err:
                 st.error(f"❌ خطأ بالاتصال: {str(err)}")
