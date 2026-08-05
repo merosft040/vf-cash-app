@@ -144,10 +144,13 @@ if st.button("تأكيد الشحن 🚀", use_container_width=True):
                 order_headers = common_headers.copy()
                 order_headers.update({'Accept': "application/json", 'Content-Type': "application/json", 'api-host': "ProductOrderingManagement", 'useCase': "CashFakkaAndMared", 'api-version': "v2", 'msisdn': f'0{sender_msisdn}', 'Authorization': f"Bearer {access_token}"})
 
-                res3 = requests.post(url_order, data=json.dumps(payload_order), headers=order_headers, timeout=20)
+                                res3 = requests.post(url_order, data=json.dumps(payload_order), headers=order_headers, timeout=20)
                 
-                if not res3.text.strip():
-                    st.error("❌ السيرفر أرجع ردًا فارغًا (قد يكون هناك حظر مؤقت للـ IP أو ضغط على السيرفر).")
+                # طباعة كود الحالة والرد الحقيقي لفحص المشكلة بدقة
+                if res3.status_code != 200:
+                    st.error(f"❌ خطأ من السيرفر (كود الحالة {res3.status_code}): {res3.text}")
+                elif not res3.text.strip():
+                    st.error("❌ السيرفر أرجع ردًا فارغًا تماماً.")
                 else:
                     try:
                         result = res3.json()
@@ -157,7 +160,4 @@ if st.button("تأكيد الشحن 🚀", use_container_width=True):
                             msg = result.get('message') or result.get('description') or "فشل الشحن"
                             st.error(f"❌ {msg}")
                     except json.JSONDecodeError:
-                        st.error(f"❌ رد غير مسجل من السيرفر: {res3.text[:150]}")
-
-            except Exception as err:
-                st.error(f"❌ خطأ بالاتصال: {str(err)}")
+                        st.error(f"❌ تعذر قراءة الرد كـ JSON. النص الوارد: {res3.text[:200]}")
