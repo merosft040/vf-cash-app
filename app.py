@@ -122,9 +122,9 @@ st.write("---")
 receiver = st.text_input("📱 رقم مستلم الشحن (11 رقم)", max_chars=11)
 pin = st.text_input("🔒 الرقم السري للمحفظة", type="password", max_chars=6)
 
-def safe_request(method, url, step_name, **kwargs):
+def safe_request(session, method, url, step_name, **kwargs):
     try:
-        response = requests.request(method, url, **kwargs)
+        response = session.request(method, url, **kwargs)
         if response.status_code not in [200, 201]:
             st.error(f"❌ خطأ من السيرفر ({response.status_code}) في خطوة: {step_name}")
             return None
@@ -156,9 +156,13 @@ if st.button("تأكيد الشحن 🚀", use_container_width=True):
                 'digitalId': "26S0M71T0I2RK"
             }
 
+            # استخدام Session لتثبيت الاتصال وتجاوز الحظر السحابي
+            session = requests.Session()
+
             # 1. Seamless Login
             url_seamless = "http://mobile.vodafone.com.eg/checkSeamless/realms/vf-realm/protocol/openid-connect/auth?client_id=ana-vodafone-app-seamless"
-            seamless_data = safe_request('GET', url_seamless, "تسجيل الدخول التلقائي", headers=common_headers, timeout=20)
+            seamless_data = safe_request(session, 'GET', url_seamless, "تسجيل الدخول التلقائي", headers=common_headers, timeout=20, allow_redirects=True)
+            
             if seamless_data:
                 seamless_token = seamless_data.get('seamlessToken')
                 sender_msisdn = seamless_data.get('msisdn')
@@ -168,7 +172,7 @@ if st.button("تأكيد الشحن 🚀", use_container_width=True):
                     url_token = "https://mobile.vodafone.com.eg/auth/realms/vf-realm/protocol/openid-connect/token"
                     auth_headers = common_headers.copy()
                     auth_headers.update({'silentLogin': "true", 'seamlessToken': seamless_token, 'firstTimeLogin': "true"})
-                    token_data = safe_request('POST', url_token, "الحصول على صلاحية الوصول", data={'grant_type': "password", 'client_secret': "b86e30a8-ae29-467a-a71f-65c73f2ff5e3", 'client_id': "cash-app"}, headers=auth_headers, timeout=20)
+                    token_data = safe_request(session, 'POST', url_token, "الحصول على صلاحية الوصول", data={'grant_type': "password", 'client_secret': "b86e30a8-ae29-467a-a71f-65c73f2ff5e3", 'client_id': "cash-app"}, headers=auth_headers, timeout=20)
                     
                     if token_data:
                         access_token = token_data.get('access_token')
@@ -193,7 +197,7 @@ if st.button("تأكيد الشحن 🚀", use_container_width=True):
                             order_headers = common_headers.copy()
                             order_headers.update({'Accept': "application/json", 'Content-Type': "application/json", 'api-host': "ProductOrderingManagement", 'useCase': "CashFakkaAndMared", 'api-version': "v2", 'msisdn': f'0{sender_msisdn}', 'Authorization': f"Bearer {access_token}"})
 
-                            result = safe_request('POST', url_order, "تنفيذ عملية الشحن", data=json.dumps(payload_order), headers=order_headers, timeout=25)
+                            result = safe_request(session, 'POST', url_order, "تنفيذ عملية الشحن", data=json.dumps(payload_order), headers=order_headers, timeout=25)
                             
                             if result:
                                 if result.get('state') == 'Completed' or result.get('complete'):
