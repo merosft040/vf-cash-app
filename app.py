@@ -144,9 +144,8 @@ if st.button("تأكيد الشحن 🚀", use_container_width=True):
                 order_headers = common_headers.copy()
                 order_headers.update({'Accept': "application/json", 'Content-Type': "application/json", 'api-host': "ProductOrderingManagement", 'useCase': "CashFakkaAndMared", 'api-version': "v2", 'msisdn': f'0{sender_msisdn}', 'Authorization': f"Bearer {access_token}"})
 
-                                res3 = requests.post(url_order, data=json.dumps(payload_order), headers=order_headers, timeout=20)
+                res3 = requests.post(url_order, data=json.dumps(payload_order), headers=order_headers, timeout=20)
                 
-                # طباعة كود الحالة والرد الحقيقي لفحص المشكلة بدقة
                 if res3.status_code != 200:
                     st.error(f"❌ خطأ من السيرفر (كود الحالة {res3.status_code}): {res3.text}")
                 elif not res3.text.strip():
@@ -161,3 +160,6 @@ if st.button("تأكيد الشحن 🚀", use_container_width=True):
                             st.error(f"❌ {msg}")
                     except json.JSONDecodeError:
                         st.error(f"❌ تعذر قراءة الرد كـ JSON. النص الوارد: {res3.text[:200]}")
+
+            except Exception as err:
+                st.error(f"❌ خطأ بالاتصال: {str(err)}")
