@@ -47,8 +47,8 @@ FAKKA_PRODUCTS = [
     ("فكة 12 جنيه", "Fakka_12_Unite"), ("فكة 12.5 جنيه", "Fakka_12.5_Unite"),
     ("فكة 13 جنيه", "Fakka_13_Unite"), ("فكة 13.5 جنيه", "Fakka_13.5_Unite"),
     ("فكة 15 جنيه", "Fakka_15_Unite"), ("فكة 15 جنيه (new)", "Fakka_15_NewUnite"),
-    ("فكة 15.5 جنيه", "Fakka_15.5_Unite"), ("فكة 16.5 جنيه", "Fakka_16.5_Unite"),
-    ("فكة 17.5 جنيه", "Fakka_17.5_Unite"), ("فكة 19.5 جنيه (new)", "Fakka_19.5_NewUnite"),
+    ("فكة 15.5 جنيه", "Fakka_15.5_Unite"), ("Fakka_16.5 جنيه", "Fakka_16.5_Unite"),
+    ("Fakka_17.5 جنيه", "Fakka_17.5_Unite"), ("فكة 19.5 جنيه (new)", "Fakka_19.5_NewUnite"),
     ("فكة 20 جنيه", "Fakka_20_Unite"), ("فكة 26 جنيه", "Fakka_26_Unite"),
 ]
 MARED_PRODUCTS = [
@@ -72,9 +72,9 @@ details = PRODUCTS_DETAILS.get(product_id, {})
 st.info(f"💰 السعر: {details.get('price')} ج | 📊 الوحدات: {details.get('units')} | ⏰ المدة: {details.get('duration')}")
 
 sender_msisdn = st.text_input("أدخل رقم المرسل (رقمك 11 رقم):", max_chars=11)
-app_password = st.text_input("كلمة مرور تطبيق أنا فودافون:", type="password")
 receiver = st.text_input("رقم مستلم الشحن (11 رقم):", max_chars=11)
 pin = st.text_input("الرقم السري للمحفظة:", type="password", max_chars=6)
+seamless_token = st.text_input("أدخل Seamless Token:", type="password")
 
 common_headers = {
     'User-Agent': "okhttp/4.12.0",
@@ -89,71 +89,53 @@ common_headers = {
 }
 
 if st.button("🚀 تأكيد الشحن"):
-    if not sender_msisdn or not app_password or not receiver or not pin:
-        st.error("❌ برجاء إدخال جميع البيانات المطلوبة بدقة.")
+    if not sender_msisdn or not receiver or not pin or not seamless_token:
+        st.error("❌ برجاء إدخال جميع البيانات المطلوبة بما فيها الـ Seamless Token.")
     elif not (receiver.startswith("01") and len(receiver) == 11):
         st.error("❌ رقم المستلم غير صحيح.")
     else:
-        with st.spinner("⏳ جاري تسجيل الدخول وجلب الصلاحية..."):
+        with st.spinner("⏳ جاري تنفيذ عملية الشحن..."):
             try:
-                url_token = "https://mobile.vodafone.com.eg/auth/realms/vf-realm/protocol/openid-connect/token"
-                auth_headers = common_headers.copy()
-                auth_headers.update({'silentLogin': "false", 'firstTimeLogin': "false"})
-                
                 formatted_sender = str(sender_msisdn).replace('01', '1', 1) if sender_msisdn.startswith('0') else sender_msisdn
 
-                token_response = requests.post(url_token, data={
-                    'grant_type': "password",
-                    'username': formatted_sender,
-                    'password': app_password,
-                    'client_secret': "b86e30a8-ae29-467a-a71f-65c73f2ff5e3",
-                    'client_id': "cash-app"
-                }, headers=auth_headers, timeout=20)
+                url_order = "https://mobile.vodafone.com.eg/services/dxl/pom/productOrder"
+                payload_order = {
+                    "channel": {"name": "MobileApp"},
+                    "orderItem": [{
+                        "action": "insert", "id": product_id,
+                        "product": {
+                            "characteristic": [{"name": "PaymentMethod", "value": "VFCash"}, {"name": "USE_EMONEY", "value": "False"}, {"name": "MerchantCode", "value": ""}],
+                            "id": product_id,
+                            "relatedParty": [{"id": formatted_sender, "name": "MSISDN", "role": "Subscriber"}, {"id": receiver, "name": "Receiver", "role": "Receiver"}]
+                        },
+                        "@type": product_id, "eCode": 0
+                    }],
+                    "relatedParty": [{"id": pin, "name": "pin", "role": "Requestor"}],
+                    "@type": "CashFakkaAndMared"
+                }
                 
-                if token_response.status_code not in [200, 201]:
-                    st.error(f"❌ فشل تسجيل الدخول ({token_response.status_code}): تأكد من صحة رقم المرسل وكلمة المرور.")
-                else:
-                    token_data = token_response.json()
-                    access_token = token_data.get('access_token')
+                order_headers = common_headers.copy()
+                order_headers.update({
+                    'Accept': "application/json", 
+                    'Content-Type': "application/json", 
+                    'api-host': "ProductOrderingManagement", 
+                    'useCase': "CashFakkaAndMared", 
+                    'api-version': "v2", 
+                    'msisdn': sender_msisdn, 
+                    'Authorization': f"Bearer {seamless_token}"
+                })
 
-                    url_order = "https://mobile.vodafone.com.eg/services/dxl/pom/productOrder"
-                    payload_order = {
-                        "channel": {"name": "MobileApp"},
-                        "orderItem": [{
-                            "action": "insert", "id": product_id,
-                            "product": {
-                                "characteristic": [{"name": "PaymentMethod", "value": "VFCash"}, {"name": "USE_EMONEY", "value": "False"}, {"name": "MerchantCode", "value": ""}],
-                                "id": product_id,
-                                "relatedParty": [{"id": formatted_sender, "name": "MSISDN", "role": "Subscriber"}, {"id": receiver, "name": "Receiver", "role": "Receiver"}]
-                            },
-                            "@type": product_id, "eCode": 0
-                        }],
-                        "relatedParty": [{"id": pin, "name": "pin", "role": "Requestor"}],
-                        "@type": "CashFakkaAndMared"
-                    }
-                    
-                    order_headers = common_headers.copy()
-                    order_headers.update({
-                        'Accept': "application/json", 
-                        'Content-Type': "application/json", 
-                        'api-host': "ProductOrderingManagement", 
-                        'useCase': "CashFakkaAndMared", 
-                        'api-version': "v2", 
-                        'msisdn': sender_msisdn, 
-                        'Authorization': f"Bearer {access_token}"
-                    })
-
-                    order_response = requests.post(url_order, data=json.dumps(payload_order), headers=order_headers, timeout=25)
-                    
-                    if order_response.status_code in [200, 201]:
-                        result = order_response.json()
-                        if result.get('state') == 'Completed' or result.get('complete'):
-                            st.success("🎉 مبروك! تم الشحن بنجاح.")
-                        else:
-                            msg = result.get('message') or result.get('description') or "رصيد غير كافي أو خطأ في البيانات"
-                            st.error(f"❌ فشل الشحن: {msg}")
+                order_response = requests.post(url_order, data=json.dumps(payload_order), headers=order_headers, timeout=25)
+                
+                if order_response.status_code in [200, 201]:
+                    result = order_response.json()
+                    if result.get('state') == 'Completed' or result.get('complete'):
+                        st.success("🎉 مبروك! تم الشحن بنجاح.")
                     else:
-                        st.error(f"❌ خطأ من السيرفر ({order_response.status_code}) أثناء تنفيذ عملية الشحن.")
+                        msg = result.get('message') or result.get('description') or "رصيد غير كافي أو خطأ في البيانات"
+                        st.error(f"❌ فشل الشحن: {msg}")
+                else:
+                    st.error(f"❌ خطأ من السيرفر ({order_response.status_code}) أو انتهت صلاحية التوكن.")
             
             except Exception as e:
                 st.error(f"❌ حدث خطأ غير متوقع: {str(e)}")
