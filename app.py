@@ -44,8 +44,8 @@ FAKKA_PRODUCTS = [
     ("فكة 7 جنيه", "Fakka_7_Unite"), ("فكة 9 جنيه", "Fakka_9_Unite"),
     ("فكة 10 جنيه", "Fakka_10_Unite"), ("فكة 10 جنيه (new)", "Fakka_10_NewUnite"),
     ("فكة 10.5 جنيه", "Fakka_10.5_Unite"), ("فكة 11.5 جنيه", "Fakka_11.5_Unite"),
-    ("فكة 12 جنيه", "Fakka_12_Unite"), ("فكة 12.5 جنيه", "Fakka_12.5_Unite"),
-    ("فكة 13 جنيه", "Fakka_13_Unite"), ("فكة 13.5 جنيه", "Fakka_13.5_Unite"),
+    ("فكة 12 جنيه", "Fakka_12_Unite"), ("Fakka_12.5 جنيه", "Fakka_12.5_Unite"),
+    ("فكة 13 جنيه", "Fakka_13_Unite"), ("Fakka_13.5 جنيه", "Fakka_13.5_Unite"),
     ("فكة 15 جنيه", "Fakka_15_Unite"), ("فكة 15 جنيه (new)", "Fakka_15_NewUnite"),
     ("فكة 15.5 جنيه", "Fakka_15.5_Unite"), ("فكة 16.5 جنيه", "Fakka_16.5_Unite"),
     ("فكة 17.5 جنيه", "Fakka_17.5_Unite"), ("فكة 19.5 جنيه (new)", "Fakka_19.5_NewUnite"),
@@ -94,8 +94,14 @@ if st.button("🚀 تأكيد الشحن"):
         with st.spinner("⏳ جاري الاتصال وتوليد التوكن تلقائياً وتنفيذ الشحن..."):
             try:
                 # 1. Seamless Login[span_1](start_span)[span_1](end_span)
-                url_seamless = "http://mobile.vodafone.com.eg/checkSeamless/realms/vf-realm/protocol/openid-connect/auth?client_id=ana-vodafone-app-seamless"
-                seamless_res = requests.get(url_seamless, headers=common_headers, timeout=20)
+                url_seamless = "https://mobile.vodafone.com.eg/checkSeamless/realms/vf-realm/protocol/openid-connect/auth?client_id=ana-vodafone-app-seamless"
+                seamless_headers = common_headers.copy()
+                seamless_headers.update({
+                    'Accept': "application/json",
+                    'Host': "mobile.vodafone.com.eg"
+                })
+                
+                seamless_res = requests.get(url_seamless, headers=seamless_headers, timeout=20)
                 if seamless_res.status_code not in [200, 201]:
                     st.error(f"❌ خطأ في خطوة التحقق التلقائي ({seamless_res.status_code})")
                     st.stop()
