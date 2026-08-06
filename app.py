@@ -9,11 +9,10 @@ st.set_page_config(
     layout="centered"
 )
 
-# ---------- بيانات المنتجات والثوابت ----------
 SENDER_MSISDN = "01029442894"
-FORMATTED_SENDER = "1029442894"
-SEAMLESS_TOKEN = "0LsQ3HBzSemFYfsv1C909D35gfj8TtGOGFq20glVjbZ8QspJFBHwYw0VaAmqdfvyBsuOS/fjhEsC3dQ6J9Mm/VTRM7W8DFPe4TNB2qUvtp3WO9v2jtJZYv3MnbeHrL9LvJebI+v0XwqcnW0nKtBoLRhYX+ayFSOYd4YQK51FwUMwf5gLwZa7q573SzyBRe2P7+eRByF+1PxVBjRmzdVbfgKcskS7QuOtm4bQG2dacWr4Ry0QvryooWqQ+mkjqHhRGkJIlBBv4a4="
+FORMATTED_SENDER = "01029442894"
 
+# ---------- بيانات المنتجات والثوابت ----------
 PRODUCTS_DETAILS = {
     "Fakka_2.5_Unite": {"name": "فكة 2.5 جنيه", "price": "1.75", "units": "45 وحدة", "duration": "يوم واحد"},
     "Fakka_4.25_Unite": {"name": "فكة 4.25 جنيه", "price": "2.97", "units": "190 وحدة", "duration": "يوم واحد"},
@@ -48,7 +47,7 @@ FAKKA_PRODUCTS = [
     ("فكة 7 جنيه", "Fakka_7_Unite"), ("فكة 9 جنيه", "Fakka_9_Unite"),
     ("فكة 10 جنيه", "Fakka_10_Unite"), ("فكة 10 جنيه (new)", "Fakka_10_NewUnite"),
     ("فكة 10.5 جنيه", "Fakka_10.5_Unite"), ("فكة 11.5 جنيه", "Fakka_11.5_Unite"),
-    ("فكة 12 جنيه", "Fakka_12_Unite"), ("فكة 12.5 جنيه", "Fakka_12.5_Unite"),
+    ("فكة 12 جنيه", "Fakka_12_Unite"), ("Fakka_12.5 جنيه", "Fakka_12.5_Unite"),
     ("فكة 13 جنيه", "Fakka_13_Unite"), ("فكة 13.5 جنيه", "Fakka_13.5_Unite"),
     ("فكة 15 جنيه", "Fakka_15_Unite"), ("فكة 15 جنيه (new)", "Fakka_15_NewUnite"),
     ("فكة 15.5 جنيه", "Fakka_15.5_Unite"), ("فكة 16.5 جنيه", "Fakka_16.5_Unite"),
@@ -74,10 +73,14 @@ product_id = product_options[selected_product_name]
 details = PRODUCTS_DETAILS.get(product_id, {})
 st.info(f"💰 السعر: {details.get('price')} ج | 📊 الوحدات: {details.get('units')} | ⏰ المدة: {details.get('duration')}")
 
-st.success("🟢 رقم المرسل مسجل وجاهز: " + SENDER_MSISDN)
+st.success("🟢 رقم المرسل: " + SENDER_MSISDN)
 
 receiver = st.text_input("رقم مستلم الشحن (11 رقم):", max_chars=11)
 pin = st.text_input("الرقم السري للمحفظة:", type="password", max_chars=6)
+
+# حقل لتحديث التوكن مباشرة من الواجهة عندما تنتهي صلاحيته
+default_token = "0LsQ3HBzSemFYfsv1C909D35gfj8TtGOGFq20glVjbZ8QspJFBHwYw0VaAmqdfvyBsuOS/fjhEsC3dQ6J9Mm/VTRM7W8DFPe4TNB2qUvtp3WO9v2jtJZYv3MnbeHrL9LvJebI+v0XwqcnW0nKtBoLRhYX+ayFSOYd4YQK51FwUMwf5gLwZa7q573SzyBRe2P7+eRByF+1PxVBjRmzdVbfgKcskS7QuOtm4bQG2dacWr4Ry0QvryooWqQ+mkjqHhRGkJIlBBv4a4="
+seamless_token = st.text_input("Seamless Token (قم بتحديثه إذا انتهت صلاحيته):", value=default_token, type="password")
 
 common_headers = {
     'User-Agent': "okhttp/4.12.0",
@@ -92,8 +95,8 @@ common_headers = {
 }
 
 if st.button("🚀 تأكيد الشحن"):
-    if not receiver or not pin:
-        st.error("❌ برجاء إدخال رقم المستلم والرقم السري للمحفظة.")
+    if not receiver or not pin or not seamless_token:
+        st.error("❌ برجاء إدخال جميع البيانات المطلوبة.")
     elif not (receiver.startswith("01") and len(receiver) == 11):
         st.error("❌ رقم المستلم غير صحيح.")
     else:
@@ -123,7 +126,7 @@ if st.button("🚀 تأكيد الشحن"):
                     'useCase': "CashFakkaAndMared", 
                     'api-version': "v2", 
                     'msisdn': SENDER_MSISDN, 
-                    'Authorization': f"Bearer {SEAMLESS_TOKEN}"
+                    'Authorization': f"Bearer {seamless_token}"
                 })
 
                 order_response = requests.post(url_order, data=json.dumps(payload_order), headers=order_headers, timeout=25)
