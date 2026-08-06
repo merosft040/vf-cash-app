@@ -58,7 +58,6 @@ MARED_PRODUCTS = [
 ]
 ALL_PRODUCTS = FAKKA_PRODUCTS + MARED_PRODUCTS
 
-# خريطة الأسماء للاختيار السهل
 product_options = {name: pid for name, pid in ALL_PRODUCTS}
 
 # واجهة المستخدم
@@ -66,19 +65,16 @@ st.markdown("<h1 style='text-align: center; color: #ff3333;'>🚀 كاش 2026 �
 st.markdown("<h3 style='text-align: center;'>شحن كروت الفكة والمارد</h3>", unsafe_allow_html=True)
 st.divider()
 
-# اختيار الكرت
 selected_product_name = st.selectbox("اختر الكرت المطلوب لشحنه:", list(product_options.keys()))
 product_id = product_options[selected_product_name]
 
-# عرض تفاصيل الكرت المختار
 details = PRODUCTS_DETAILS.get(product_id, {})
 st.info(f"💰 السعر: {details.get('price')} ج | 📊 الوحدات: {details.get('units')} | ⏰ المدة: {details.get('duration')}")
 
-# المدخلات
 sender_msisdn = st.text_input("أدخل رقم المرسل (رقمك 11 رقم):", max_chars=11)
+app_password = st.text_input("كلمة مرور تطبيق أنا فودافون:", type="password")
 receiver = st.text_input("رقم مستلم الشحن (11 رقم):", max_chars=11)
 pin = st.text_input("الرقم السري للمحفظة:", type="password", max_chars=6)
-seamless_token = st.text_input("أدخل الـ Seamless Token (اختياري):", type="password")
 
 common_headers = {
     'User-Agent': "okhttp/4.12.0",
@@ -93,34 +89,34 @@ common_headers = {
 }
 
 if st.button("🚀 تأكيد الشحن"):
-    if not sender_msisdn or not receiver or not pin:
-        st.error("❌ برجاء إدخال جميع البيانات المطلوبة (رقم المرسل، رقم المستلم، والرقم السري).")
+    if not sender_msisdn or not app_password or not receiver or not pin:
+        st.error("❌ برجاء إدخال جميع البيانات المطلوبة بدقة.")
     elif not (receiver.startswith("01") and len(receiver) == 11):
         st.error("❌ رقم المستلم غير صحيح.")
     else:
-        with st.spinner("⏳ جاري الاتصال الآمن بسيرفرات فودافون..."):
+        with st.spinner("⏳ جاري تسجيل الدخول وجلب الصلاحية..."):
             try:
-                # 1. الحصول على Access Token
                 url_token = "https://mobile.vodafone.com.eg/auth/realms/vf-realm/protocol/openid-connect/token"
                 auth_headers = common_headers.copy()
-                auth_headers.update({'silentLogin': "true", 'seamlessToken': seamless_token, 'firstTimeLogin': "true"})
+                auth_headers.update({'silentLogin': "false", 'firstTimeLogin': "false"})
                 
+                formatted_sender = str(sender_msisdn).replace('01', '1', 1) if sender_msisdn.startswith('0') else sender_msisdn
+
                 token_response = requests.post(url_token, data={
-                    'grant_type': "password", 
-                    'client_secret': "b86e30a8-ae29-467a-a71f-65c73f2ff5e3", 
+                    'grant_type': "password",
+                    'username': formatted_sender,
+                    'password': app_password,
+                    'client_secret': "b86e30a8-ae29-467a-a71f-65c73f2ff5e3",
                     'client_id': "cash-app"
                 }, headers=auth_headers, timeout=20)
                 
                 if token_response.status_code not in [200, 201]:
-                    st.error(f"❌ خطأ من السيرفر ({token_response.status_code}) في جلب الصلاحية.")
+                    st.error(ف"❌ فشل تسجيل الدخول ({token_response.status_code}): تأكد من صحة رقم المرسل وكلمة المرور.")
                 else:
                     token_data = token_response.json()
                     access_token = token_data.get('access_token')
 
-                    # 2. تنفيذ أمر الشحن
                     url_order = "https://mobile.vodafone.com.eg/services/dxl/pom/productOrder"
-                    formatted_sender = str(sender_msisdn).replace('01', '1', 1) if sender_msisdn.startswith('0') else sender_msisdn
-                    
                     payload_order = {
                         "channel": {"name": "MobileApp"},
                         "orderItem": [{
