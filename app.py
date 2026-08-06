@@ -1,20 +1,13 @@
 import requests
 import json
-import sys
-import os
-import time
+import streamlit as st
 
-# ---------- الألوان والتنسيقات ----------
-RESET = "\033[0m"
-BOLD = "\033[1m"
-GREEN = "\033[38;5;46m"
-LIGHT_GREEN = "\033[38;5;118m"
-WHITE = "\033[38;5;255m"
-YELLOW = "\033[38;5;226m"
-CYAN = "\033[38;5;51m"
-MAGENTA = "\033[38;5;201m"
-RED = "\033[38;5;196m"
-GRAY = "\033[38;5;244m"
+# ---------- إعدادات الصفحة ----------
+st.set_page_config(
+    page_title="نظام شحن فودافون كاش المطور",
+    page_icon="🚀",
+    layout="centered"
+)
 
 # ---------- بيانات المنتجات (محدثة 2026) ----------
 PRODUCTS_DETAILS = {
@@ -51,8 +44,8 @@ FAKKA_PRODUCTS = [
     ("فكة 7 جنيه", "Fakka_7_Unite"), ("فكة 9 جنيه", "Fakka_9_Unite"),
     ("فكة 10 جنيه", "Fakka_10_Unite"), ("فكة 10 جنيه (new)", "Fakka_10_NewUnite"),
     ("فكة 10.5 جنيه", "Fakka_10.5_Unite"), ("فكة 11.5 جنيه", "Fakka_11.5_Unite"),
-    ("فكة 12 جنيه", "Fakka_12_Unite"), ("Fakka_12.5 جنيه", "Fakka_12.5_Unite"),
-    ("فكة 13 جنيه", "Fakka_13_Unite"), ("Fakka_13.5 جنيه", "Fakka_13.5_Unite"),
+    ("فكة 12 جنيه", "Fakka_12_Unite"), ("فكة 12.5 جنيه", "Fakka_12.5_Unite"),
+    ("فكة 13 جنيه", "Fakka_13_Unite"), ("فكة 13.5 جنيه", "Fakka_13.5_Unite"),
     ("فكة 15 جنيه", "Fakka_15_Unite"), ("فكة 15 جنيه (new)", "Fakka_15_NewUnite"),
     ("فكة 15.5 جنيه", "Fakka_15.5_Unite"), ("فكة 16.5 جنيه", "Fakka_16.5_Unite"),
     ("فكة 17.5 جنيه", "Fakka_17.5_Unite"), ("فكة 19.5 جنيه (new)", "Fakka_19.5_NewUnite"),
@@ -64,134 +57,104 @@ MARED_PRODUCTS = [
     ("مارد 10 سوشيال", "Mared_10_Social"),
 ]
 ALL_PRODUCTS = FAKKA_PRODUCTS + MARED_PRODUCTS
+product_options = {name: pid for name, pid in ALL_PRODUCTS}
 
-def clear_screen():
-    os.system('cls' if os.name == 'nt' else 'clear')
+# واجهة المستخدم
+st.markdown("<h1 style='text-align: center; color: #ff3333;'>🚀 نظام شحن فودافون كاش 2026 🚀</h1>", unsafe_allow_html=True)
+st.markdown("<h3 style='text-align: center;'>شحن كروت الفكة والمارد تلقائياً</h3>", unsafe_allow_html=True)
+st.divider()
 
-def print_header():
-    print(f"\n{GREEN}{BOLD}╔" + "═"*58 + "╗")
-    print(f"║{YELLOW}{BOLD}          🚀  نظام شحن فودافون كاش المطور 2026  🚀          {GREEN}║")
-    print(f"╚" + "═"*58 + f"╝{RESET}")
+selected_product_name = st.selectbox("اختر الكرت المطلوب لشحنه:", list(product_options.keys()))
+product_id = product_options[selected_product_name]
 
-def print_product_box(index, product_id):
-    details = PRODUCTS_DETAILS.get(product_id, {})
-    name = details.get('name', 'غير معروف')
-    price = details.get('price', 'غير معروف')
-    units = details.get('units', 'غير معروف')
-    duration = details.get('duration', 'غير معروف')
-    price_str = f"{price} ج" if price not in ["سعر متغير", "غير معروف"] else price
-    print(f"{GREEN}╔" + "═"*58 + "╗")
-    print(f"║ {WHITE}{BOLD}[{index:02}]{RESET} {YELLOW}{BOLD}{name:<46}{GREEN} ║")
-    print(f"╠" + "─"*58 + "╣")
-    print(f"║ {WHITE}💰 السعر   : {CYAN}{price_str:<45}{GREEN} ║")
-    print(f"║ {WHITE}📊 الوحدات : {MAGENTA}{units:<45}{GREEN} ║")
-    print(f"║ {WHITE}⏰ المدة   : {LIGHT_GREEN}{duration:<45}{GREEN} ║")
-    print(f"╚" + "═"*58 + "╝{RESET}")
+details = PRODUCTS_DETAILS.get(product_id, {})
+st.info(f"💰 السعر: {details.get('price')} ج | 📊 الوحدات: {details.get('units')} | ⏰ المدة: {details.get('duration')}")
 
-def safe_request(method, url, step_name, **kwargs):
-    try:
-        response = requests.request(method, url, **kwargs)
-        if response.status_code not in [200, 201]:
-            print(f"\n{RED}❌ خطأ من السيرفر ({response.status_code}) في خطوة: {step_name}{RESET}")
-            return None
-        
-        try:
-            return response.json()
-        except requests.exceptions.JSONDecodeError:
-            print(f"\n{RED}❌ الرد المستلم ليس بتنسيق JSON في خطوة: {step_name}{RESET}")
-            return None
+receiver = st.text_input("رقم مستلم الشحن (11 رقم):", max_chars=11)
+pin = st.text_input("الرقم السري للمحفظة:", type="password", max_chars=6)
+
+common_headers = {
+    'User-Agent': "okhttp/4.12.0",
+    'Connection': "Keep-Alive",
+    'Accept-Encoding': "gzip",
+    'clientId': "AnaVodafoneAndroid",
+    'Accept-Language': "ar",
+    'x-agent-operatingsystem': "14",
+    'x-agent-version': "2026.7.1",
+    'x-agent-build': "1200",
+    'digitalId': "26S0M71T0I2RK"
+}
+
+if st.button("🚀 تأكيد الشحن"):
+    if not receiver or not pin:
+        st.error("❌ برجاء إدخال رقم المستلم والرقم السري للمحفظة.")
+    elif not (receiver.startswith("01") and len(receiver) == 11):
+        st.error("❌ رقم المستلم غير صحيح.")
+    else:
+        with st.spinner("⏳ جاري الاتصال وتوليد التوكن تلقائياً وتنفيذ الشحن..."):
+            try:
+                # 1. Seamless Login[span_1](start_span)[span_1](end_span)
+                url_seamless = "http://mobile.vodafone.com.eg/checkSeamless/realms/vf-realm/protocol/openid-connect/auth?client_id=ana-vodafone-app-seamless"
+                seamless_res = requests.get(url_seamless, headers=common_headers, timeout=20)
+                if seamless_res.status_code not in [200, 201]:
+                    st.error(f"❌ خطأ في خطوة التحقق التلقائي ({seamless_res.status_code})")
+                    st.stop()
+                
+                seamless_data = seamless_res.json()
+                seamless_token = seamless_data.get('seamlessToken')
+                sender_msisdn = seamless_data.get('msisdn')
+
+                # 2. Access Token[span_2](start_span)[span_2](end_span)
+                url_token = "https://mobile.vodafone.com.eg/auth/realms/vf-realm/protocol/openid-connect/token"
+                auth_headers = common_headers.copy()
+                auth_headers.update({'silentLogin': "true", 'seamlessToken': seamless_token, 'firstTimeLogin': "true"})
+                token_res = requests.post(url_token, data={'grant_type': "password", 'client_secret': "b86e30a8-ae29-467a-a71f-65c73f2ff5e3", 'client_id': "cash-app"}, headers=auth_headers, timeout=20)
+                
+                if token_res.status_code not in [200, 201]:
+                    st.error(f"❌ خطأ في الحصول على صلاحية الوصول ({token_res.status_code})")
+                    st.stop()
+                
+                token_data = token_res.json()
+                access_token = token_data.get('access_token')
+
+                # 3. Product Order[span_3](start_span)[span_3](end_span)
+                url_order = "https://mobile.vodafone.com.eg/services/dxl/pom/productOrder"
+                payload_order = {
+                    "channel": {"name": "MobileApp"},
+                    "orderItem": [{
+                        "action": "insert", "id": product_id,
+                        "product": {
+                            "characteristic": [{"name": "PaymentMethod", "value": "VFCash"}, {"name": "USE_EMONEY", "value": "False"}, {"name": "MerchantCode", "value": ""}],
+                            "id": product_id,
+                            "relatedParty": [{"id": str(sender_msisdn), "name": "MSISDN", "role": "Subscriber"}, {"id": receiver, "name": "Receiver", "role": "Receiver"}]
+                        },
+                        "@type": product_id, "eCode": 0
+                    }],
+                    "relatedParty": [{"id": pin, "name": "pin", "role": "Requestor"}],
+                    "@type": "CashFakkaAndMared"
+                }
+                order_headers = common_headers.copy()
+                order_headers.update({
+                    'Accept': "application/json", 
+                    'Content-Type': "application/json", 
+                    'api-host': "ProductOrderingManagement", 
+                    'useCase': "CashFakkaAndMared", 
+                    'api-version': "v2", 
+                    'msisdn': f'0{sender_msisdn}', 
+                    'Authorization': f"Bearer {access_token}"
+                })
+
+                order_response = requests.post(url_order, data=json.dumps(payload_order), headers=order_headers, timeout=25)
+                
+                if order_response.status_code in [200, 201]:
+                    result = order_response.json()
+                    if result.get('state') == 'Completed' or result.get('complete'):
+                        st.success("🎉 مبروك! تم الشحن بنجاح.")
+                    else:
+                        msg = result.get('message') or result.get('description') or "رصيد غير كافي أو خطأ في البيانات"
+                        st.error(f"❌ فشل الشحن: {msg}")
+                else:
+                    st.error(f"❌ خطأ من السيرفر عند التنفيذ ({order_response.status_code}).")
             
-    except Exception as e:
-        print(f"\n{RED}❌ حدث خطأ غير متوقع: {str(e)}{RESET}")
-    return None
-
-def main():
-    clear_screen()
-    print_header()
-    print(f"\n{WHITE}{BOLD}📦 قائمة الكروت المتاحة:{RESET}\n")
-    for i, (name, pid) in enumerate(ALL_PRODUCTS, 1):
-        print_product_box(i, pid)
-    
-    print(f"\n{GREEN}" + "═"*60 + f"{RESET}")
-    while True:
-        try:
-            choice_str = input(f"{WHITE}{BOLD}🔢 أدخل رقم الكرت المطلوب: {RESET}")
-            if not choice_str: continue
-            choice = int(choice_str)
-            if 1 <= choice <= len(ALL_PRODUCTS):
-                product_name, product_id = ALL_PRODUCTS[choice-1]
-                break
-            else:
-                print(f"{RED}❌ الرقم يجب أن يكون بين 1 و {len(ALL_PRODUCTS)}{RESET}")
-        except ValueError:
-            print(f"{RED}❌ يرجى إدخال رقم صحيح.{RESET}")
-
-    print(f"\n{GREEN}{BOLD}✅ تم اختيار: {WHITE}{product_name}{RESET}")
-
-    print(f"\n{CYAN}{BOLD}📱 بيانات المستلم:{RESET}")
-    receiver = input(f"{WHITE}   أدخل رقم الهاتف (11 رقم): {RESET}").strip()
-    if not (receiver.startswith("01") and len(receiver) == 11):
-        print(f"{RED}❌ رقم غير صحيح.{RESET}")
-        return
-
-    pin = input(f"{WHITE}🔒 أدخل الرقم السري للمحفظة: {RESET}").strip()
-
-    print(f"\n{YELLOW}⏳ جاري الاتصال الآمن بسيرفرات فودافون 2026...{RESET}")
-
-    common_headers = {
-        'User-Agent': "okhttp/4.12.0",
-        'Connection': "Keep-Alive",
-        'Accept-Encoding': "gzip",
-        'clientId': "AnaVodafoneAndroid",
-        'Accept-Language': "ar",
-        'x-agent-operatingsystem': "14",
-        'x-agent-version': "2026.7.1",
-        'x-agent-build': "1200",
-        'digitalId': "26S0M71T0I2RK"
-    }
-
-    # 1. Seamless Login[span_1](start_span)[span_1](end_span)
-    url_seamless = "http://mobile.vodafone.com.eg/checkSeamless/realms/vf-realm/protocol/openid-connect/auth?client_id=ana-vodafone-app-seamless"
-    seamless_data = safe_request('GET', url_seamless, "تسجيل الدخول التلقائي", headers=common_headers, timeout=20)
-    if not seamless_data: return
-    seamless_token = seamless_data.get('seamlessToken')
-    sender_msisdn = seamless_data.get('msisdn')
-
-    # 2. Access Token[span_2](start_span)[span_2](end_span)
-    url_token = "https://mobile.vodafone.com.eg/auth/realms/vf-realm/protocol/openid-connect/token"
-    auth_headers = common_headers.copy()
-    auth_headers.update({'silentLogin': "true", 'seamlessToken': seamless_token, 'firstTimeLogin': "true"})
-    token_data = safe_request('POST', url_token, "الحصول على صلاحية الوصول", data={'grant_type': "password", 'client_secret': "b86e30a8-ae29-467a-a71f-65c73f2ff5e3", 'client_id': "cash-app"}, headers=auth_headers, timeout=20)
-    if not token_data: return
-    access_token = token_data.get('access_token')
-
-    # 3. Product Order[span_3](start_span)[span_3](end_span)
-    url_order = "https://mobile.vodafone.com.eg/services/dxl/pom/productOrder"
-    payload_order = {
-        "channel": {"name": "MobileApp"},
-        "orderItem": [{
-            "action": "insert", "id": product_id,
-            "product": {
-                "characteristic": [{"name": "PaymentMethod", "value": "VFCash"}, {"name": "USE_EMONEY", "value": "False"}, {"name": "MerchantCode", "value": ""}],
-                "id": product_id,
-                "relatedParty": [{"id": str(sender_msisdn), "name": "MSISDN", "role": "Subscriber"}, {"id": receiver, "name": "Receiver", "role": "Receiver"}]
-            },
-            "@type": product_id, "eCode": 0
-        }],
-        "relatedParty": [{"id": pin, "name": "pin", "role": "Requestor"}],
-        "@type": "CashFakkaAndMared"
-    }
-    order_headers = common_headers.copy()
-    order_headers.update({'Accept': "application/json", 'Content-Type': "application/json", 'api-host': "ProductOrderingManagement", 'useCase': "CashFakkaAndMared", 'api-version': "v2", 'msisdn': f'0{sender_msisdn}', 'Authorization': f"Bearer {access_token}"})
-
-    result = safe_request('POST', url_order, "تنفيذ عملية الشحن", data=json.dumps(payload_order), headers=order_headers, timeout=25)
-    
-    if result:
-        if result.get('state') == 'Completed' or result.get('complete'):
-            print(f"\n{GREEN}{BOLD}🎉 مبروك! تم الشحن بنجاح.{RESET}")
-        else:
-            msg = result.get('message') or result.get('description') or "رصيد غير كافي أو خطأ في البيانات"
-            print(f"\n{RED}❌ فشل الشحن: {msg}{RESET}")
-
-if __name__ == "__main__":
-    main()
+            except Exception as e:
+                st.error(f"❌ حدث خطأ غير متوقع: {str(e)}")
