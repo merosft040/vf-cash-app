@@ -160,7 +160,7 @@ if st.button("تأكيد الشحن 🚀", use_container_width=True):
             session = requests.Session()
 
             # 1. Seamless Login
-            url_seamless = "http://mobile.vodafone.com.eg/checkSeamless/realms/vf-realm/protocol/openid-connect/auth?client_id=ana-vodafone-app-seamless"
+            url_seamless = "https://mobile.vodafone.com.eg/checkSeamless/realms/vf-realm/protocol/openid-connect/auth?client_id=ana-vodafone-app-seamless"
             seamless_data = safe_request(session, 'GET', url_seamless, "تسجيل الدخول التلقائي", headers=common_headers, timeout=20, allow_redirects=True)
             
             if seamless_data:
