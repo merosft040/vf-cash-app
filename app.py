@@ -44,11 +44,11 @@ FAKKA_PRODUCTS = [
     ("فكة 7 جنيه", "Fakka_7_Unite"), ("فكة 9 جنيه", "Fakka_9_Unite"),
     ("فكة 10 جنيه", "Fakka_10_Unite"), ("فكة 10 جنيه (new)", "Fakka_10_NewUnite"),
     ("فكة 10.5 جنيه", "Fakka_10.5_Unite"), ("فكة 11.5 جنيه", "Fakka_11.5_Unite"),
-    ("فكة 12 جنيه", "Fakka_12_Unite"), ("فكة 12.5 جنيه", "Fakka_12.5_Unite"),
+    ("فكة 12 جنيه", "Fakka_12_Unite"), ("Fakka_12.5 جنيه", "Fakka_12.5_Unite"),
     ("فكة 13 جنيه", "Fakka_13_Unite"), ("فكة 13.5 جنيه", "Fakka_13.5_Unite"),
     ("فكة 15 جنيه", "Fakka_15_Unite"), ("فكة 15 جنيه (new)", "Fakka_15_NewUnite"),
-    ("فكة 15.5 جنيه", "Fakka_15.5_Unite"), ("Fakka_16.5 جنيه", "Fakka_16.5_Unite"),
-    ("Fakka_17.5 جنيه", "Fakka_17.5_Unite"), ("فكة 19.5 جنيه (new)", "Fakka_19.5_NewUnite"),
+    ("فكة 15.5 جنيه", "Fakka_15.5_Unite"), ("فكة 16.5 جنيه", "Fakka_16.5_Unite"),
+    ("فكة 17.5 جنيه", "Fakka_17.5_Unite"), ("فكة 19.5 جنيه (new)", "Fakka_19.5_NewUnite"),
     ("فكة 20 جنيه", "Fakka_20_Unite"), ("فكة 26 جنيه", "Fakka_26_Unite"),
 ]
 MARED_PRODUCTS = [
@@ -57,8 +57,11 @@ MARED_PRODUCTS = [
     ("مارد 10 سوشيال", "Mared_10_Social"),
 ]
 ALL_PRODUCTS = FAKKA_PRODUCTS + MARED_PRODUCTS
-
 product_options = {name: pid for name, pid in ALL_PRODUCTS}
+
+# تهيئة الذاكرة المؤقتة للجلسة
+if 'access_token' not in st.session_state:
+    st.session_state.access_token = ""
 
 # واجهة المستخدم
 st.markdown("<h1 style='text-align: center; color: #ff3333;'>🚀 كاش 2026 🚀</h1>", unsafe_allow_html=True)
@@ -72,9 +75,57 @@ details = PRODUCTS_DETAILS.get(product_id, {})
 st.info(f"💰 السعر: {details.get('price')} ج | 📊 الوحدات: {details.get('units')} | ⏰ المدة: {details.get('duration')}")
 
 sender_msisdn = st.text_input("أدخل رقم المرسل (رقمك 11 رقم):", max_chars=11)
+
+# قسم توليد وجلب التوكن تلقائياً
+with st.expander("🔑 إدارة الجلسة وتسجيل الدخول (احصل على التوكن هنا)", expanded=not bool(st.session_state.access_token)):
+    otp_code = st.text_input("أدخل كود التحقق (OTP) لو وصلك:", max_chars=6)
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("📩 إرسال كود التحقق (OTP)"):
+            if not sender_msisdn or len(sender_msisdn) != 11:
+                st.error("❌ أدخل رقم المرسل أولاً بشكل صحيح.")
+            else:
+                try:
+                    # طلب إرسال الـ OTP من فودافون
+                    res = requests.post("https://mobile.vodafone.com.eg/auth/realms/vf-realm/protocol/openid-connect/auth", data={
+                        'client_id': "cash-app",
+                        'username': sender_msisdn
+                    }, timeout=15)
+                    st.success("✅ تم إرسال كود التحقق في رسالة نصية لرقمك.")
+                except Exception as e:
+                    st.warning("⚠️ جارٍ محاولة إرسال الكود، تابع هاتفك.")
+    
+    with col2:
+        if st.button("✨ تأكيد الكود وجلب التوكن"):
+            if not sender_msisdn or not otp_code:
+                st.error("❌ أدخل الرقم وكود التحقق.")
+            else:
+                try:
+                    token_url = "https://mobile.vodafone.com.eg/auth/realms/vf-realm/protocol/openid-connect/token"
+                    token_res = requests.post(token_url, data={
+                        'grant_type': "password",
+                        'username': sender_msisdn,
+                        'password': otp_code,
+                        'client_id': "cash-app",
+                        'client_secret': "b86e30a8-ae29-467a-a71f-65c73f2ff5e3"
+                    }, timeout=20)
+                    
+                    if token_res.status_code in [200, 201]:
+                        st.session_state.access_token = token_res.json().get('access_token', '')
+                        st.success("🎉 تم تسجيل الدخول وجلب التوكن بنجاح! يمكنك الشحن الآن.")
+                    else:
+                        st.error("❌ كود غير صحيح أو منتهي الصلاحية.")
+                except Exception as e:
+                    st.error(f"❌ خطأ: {str(e)}")
+
+if st.session_state.access_token:
+    st.success("🟢 الحالة: متصل وجاهز للشحن.")
+else:
+    st.warning("🟡 الحالة: يرجى إرسال وتأكيد الكود بالأعلى أولاً لفتح الصلاحية.")
+
 receiver = st.text_input("رقم مستلم الشحن (11 رقم):", max_chars=11)
 pin = st.text_input("الرقم السري للمحفظة:", type="password", max_chars=6)
-seamless_token = st.text_input("أدخل Seamless Token:", type="password")
 
 common_headers = {
     'User-Agent': "okhttp/4.12.0",
@@ -89,8 +140,10 @@ common_headers = {
 }
 
 if st.button("🚀 تأكيد الشحن"):
-    if not sender_msisdn or not receiver or not pin or not seamless_token:
-        st.error("❌ برجاء إدخال جميع البيانات المطلوبة بما فيها الـ Seamless Token.")
+    if not st.session_state.access_token:
+        st.error("❌ برجاء جلب وتسجيل التوكن أولاً من قائمة إدارة الجلسة بالأعلى.")
+    elif not sender_msisdn or not receiver or not pin:
+        st.error("❌ برجاء إكمال باقي بيانات الشحن المطلوبة.")
     elif not (receiver.startswith("01") and len(receiver) == 11):
         st.error("❌ رقم المستلم غير صحيح.")
     else:
@@ -122,7 +175,7 @@ if st.button("🚀 تأكيد الشحن"):
                     'useCase': "CashFakkaAndMared", 
                     'api-version': "v2", 
                     'msisdn': sender_msisdn, 
-                    'Authorization': f"Bearer {seamless_token}"
+                    'Authorization': f"Bearer {st.session_state.access_token}"
                 })
 
                 order_response = requests.post(url_order, data=json.dumps(payload_order), headers=order_headers, timeout=25)
@@ -135,7 +188,7 @@ if st.button("🚀 تأكيد الشحن"):
                         msg = result.get('message') or result.get('description') or "رصيد غير كافي أو خطأ في البيانات"
                         st.error(f"❌ فشل الشحن: {msg}")
                 else:
-                    st.error(f"❌ خطأ من السيرفر ({order_response.status_code}) أو انتهت صلاحية التوكن.")
+                    st.error(f"❌ خطأ من السيرفر ({order_response.status_code}) أو انتهت صلاحية الجلسة.")
             
             except Exception as e:
                 st.error(f"❌ حدث خطأ غير متوقع: {str(e)}")
